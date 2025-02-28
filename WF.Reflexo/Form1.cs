@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using System.Diagnostics;
 
 namespace WF.Reflexo
@@ -16,36 +21,40 @@ namespace WF.Reflexo
         private int tempoMaximoClique = 500;
         private bool primeiroClique = false;
         private int tempoPrimeiroClique;
+        private int currentAlvoSize = 100;
 
         public Form1()
         {
             InitializeComponent();
             this.Text = "Reflexo";
-            this.Size = new Size(400, 400);
+            this.Size = new Size(600, 600);
             this.StartPosition = FormStartPosition.CenterScreen;
 
             btncIniciar = new Button()
             {
                 Text = "Iniciar",
-                Size = new Size(100, 50),
-                Location = new Point(150, 300)
+                Size = new Size(150, 60),
+                Location = new Point(220, 500),
+                Font = new Font("Arial", 14, FontStyle.Bold)
             };
             btncIniciar.Click += IniciarJogo;
 
             lblHistory = new Label()
             {
                 Visible = true,
-                Size = new Size(200, 300),
-                Location = new Point(10, 50),
+                Size = new Size(300, 400),
+                Location = new Point(10, 80),
+                Font = new Font("Arial", 12, FontStyle.Regular),
+                ForeColor = Color.Blue,
                 Text = "Histórico:"
             };
 
             lblCorAtual = new Label()
             {
                 Visible = true,
-                Size = new Size(200, 30),
-                Location = new Point(10, 10),
-                Font = new Font("Arial", 12, FontStyle.Bold),
+                Size = new Size(300, 40),
+                Location = new Point(10, 20),
+                Font = new Font("Arial", 14, FontStyle.Bold),
                 Text = "Cor correta: "
             };
 
@@ -55,11 +64,11 @@ namespace WF.Reflexo
 
             btnAlvo = new Button()
             {
-                Size = new Size(50, 50),
-                Visible = false
+                Size = new Size(currentAlvoSize, currentAlvoSize),
+                Visible = false,
+                Font = new Font("Arial", 10, FontStyle.Bold)
             };
             btnAlvo.MouseClick += btnAlvoClick;
-
             this.Controls.Add(btnAlvo);
 
             timer = new System.Windows.Forms.Timer();
@@ -77,6 +86,7 @@ namespace WF.Reflexo
 
         private void IniciarNovaRodada()
         {
+            btnAlvo.Size = new Size(currentAlvoSize, currentAlvoSize);
             timer.Interval = random.Next(1000, 3000);
             timer.Start();
         }
@@ -85,13 +95,14 @@ namespace WF.Reflexo
         {
             timer.Stop();
             int x = random.Next(10, this.ClientSize.Width - btnAlvo.Width - 10);
-            int y = random.Next(50, this.ClientSize.Height - btnAlvo.Height - 10);
+            int y = random.Next(80, this.ClientSize.Height - btnAlvo.Height - 10);
             btnAlvo.Location = new Point(x, y);
             corCorreta = GerarCorAleatoria();
             btnAlvo.BackColor = corCorreta;
-            lblCorAtual.Text = $"Cor correta: {corCorreta.Name}";
+            lblCorAtual.Text = "Cor correta: " + corCorreta.Name;
             lblCorAtual.ForeColor = corCorreta;
             btnAlvo.Visible = true;
+            btnAlvo.BringToFront();
             stopwatch.Restart();
             primeiroClique = false;
         }
@@ -103,7 +114,6 @@ namespace WF.Reflexo
                 MessageBox.Show("Clique errado! Espere a cor correta.");
                 return;
             }
-
             if (!primeiroClique)
             {
                 primeiroClique = true;
@@ -120,13 +130,35 @@ namespace WF.Reflexo
                 else
                 {
                     stopwatch.Stop();
-                    history.Add($"{stopwatch.ElapsedMilliseconds}ms");
-                    lblHistory.Text = "Histórico:\n" + string.Join("\n", history);
-                    MessageBox.Show($"Tempo de reação: {stopwatch.ElapsedMilliseconds}ms");
+                    int reactionTime = (int)stopwatch.ElapsedMilliseconds;
+                    history.Add(reactionTime + "ms");
+                    lblHistory.Text = "Histórico:\n" + string.Join("\n", history) + "\nMédia: " + MediaHistorico();
+                    MessageBox.Show("Tempo de reação: " + reactionTime + "ms");
+                    if (currentAlvoSize > 20)
+                    {
+                        currentAlvoSize -= 5;
+                    }
                     btnAlvo.Visible = false;
                     Task.Delay(500).ContinueWith(_ => IniciarNovaRodada(), TaskScheduler.FromCurrentSynchronizationContext());
                 }
             }
+        }
+
+        private string MediaHistorico()
+        {
+            int count = 0;
+            double soma = 0;
+            for (int i = history.Count - 1; i >= 0 && count < 5; i--)
+            {
+                string s = history[i].Replace("ms", "");
+                if (double.TryParse(s, out double time))
+                {
+                    soma += time;
+                    count++;
+                }
+            }
+            double media = (count > 0) ? soma / count : 0;
+            return media.ToString("F2") + "ms";
         }
 
         private Color GerarCorAleatoria()
